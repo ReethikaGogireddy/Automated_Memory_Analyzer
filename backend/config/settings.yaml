@@ -1,0 +1,8 @@
+volatility_path: "/Library/Frameworks/Python.framework/Versions/3.12/bin/vol" # ← Your actual vol.py path
+output_dir: "data/raw_outputs"
+
+plugins:
+  - windows.pslist
+  - windows.pstree
+  - windows.dlllist
+  - windows.netscan
