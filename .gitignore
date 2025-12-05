@@ -1,4 +1,4 @@
-./backend/core/__pycache__
+backend/core/__pycache__
 
-./backend/data/dumps/memorydump.mem
-./backend/data/raw_outputs/
+backend/data/dumps/memorydump.mem
+backend/data/raw_outputs/

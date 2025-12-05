@@ -3,6 +3,12 @@ output_dir: "data/raw_outputs"
 
 plugins:
   - windows.pslist
-  - windows.pstree
   - windows.dlllist
-  - windows.netscan
+  - windows.handles
+  - windows.ldrmodules
+  - windows.malfind
+  - windows.psxview
+  - windows.modules
+  - windows.svcscan
+  - windows.callbacks
+
