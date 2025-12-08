@@ -3,7 +3,6 @@
 
 This project automates **Windows memory forensics** using Volatility 3, extracts structured features, classifies memory dumps as **Malware or Benign** using machine learning, and adds an offline **LLM assistant (Ollama)** for explaining results and identifying suspicious processes.
 
----
 
 ## 🚀 Features
 
@@ -18,7 +17,6 @@ This project automates **Windows memory forensics** using Volatility 3, extracts
   * Suspicious process identification
   * Simple forensic Q&A
 
----
 
 ## 📌 How It Works
 
@@ -71,7 +69,6 @@ This project automates **Windows memory forensics** using Volatility 3, extracts
    python llm/triage_processes_ollama.py
    ```
 
----
 
 ## 📁 Project Structure
 
@@ -85,7 +82,6 @@ config/settings.yaml
 main.py
 ```
 
----
 
 ## ⚙ Requirements
 
@@ -98,7 +94,6 @@ main.py
   pip install pandas scikit-learn shap ollama joblib matplotlib
   ```
 
----
 
 ## 📝 License
 

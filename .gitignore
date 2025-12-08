@@ -1,5 +1,6 @@
 backend/core/__pycache__
 backend/data/dumps/memorydump.mem
 backend/data/raw_outputs/
+backend/ml/Obfuscated-MalMem2022.csv
 
 frontend/node_modules
