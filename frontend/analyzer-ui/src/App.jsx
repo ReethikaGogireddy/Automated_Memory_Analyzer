@@ -48,27 +48,41 @@ function UploadPage() {
   const [file, setFile] = useState(null);
   const [status, setStatus] = useState("");
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!file) {
-      setStatus("Please select a file.");
-      return;
-    }
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  if (!file) {
+    setStatus("Please select a file.");
+    return;
+  }
 
-    const formData = new FormData();
-    formData.append("file", file);
+  const formData = new FormData();
+  formData.append("file", file); // must match 'file' in routes.py
 
-    try {
-      setStatus("Uploading...");
-      const res = await axios.post(`${API_BASE}/api/upload`, formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-      });
-      setStatus(res.data.message || "Uploaded!");
-    } catch (err) {
-      console.error(err);
-      setStatus("Upload failed.");
+  try {
+    setStatus("Uploading...");
+    const res = await axios.post(`${API_BASE}/api/upload`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+
+    console.log("Upload response:", res.status, res.data);
+
+    const { message, saved_to } = res.data;
+    setStatus(saved_to ? `${message} Saved at: ${saved_to}` : message);
+  } catch (err) {
+    console.error("Upload error:", err);
+
+    // If the backend sent a JSON error, show that
+    const backendMsg = err.response?.data?.message;
+    if (backendMsg) {
+      setStatus(`Upload failed: ${backendMsg}`);
+    } else if (err.message) {
+      setStatus(`Upload failed: ${err.message}`);
+    } else {
+      setStatus("Upload failed due to an unknown error.");
     }
-  };
+  }
+};
+
 
   return (
     <div>
@@ -89,6 +103,7 @@ function AnalysisPage() {
   const [classification, setClassification] = useState([]);
   const [shap, setShap] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [showExplain, setShowExplain] = useState(false);
 
   const loadData = async () => {
     try {
@@ -129,18 +144,47 @@ function AnalysisPage() {
       <section>
         <h2>SHAP values</h2>
         {!loading && (
-          <ul>
-            {shap.map((s) => (
-              <li key={s.feature}>
-                <strong>{s.feature}</strong>: {s.value.toFixed(2)}
-              </li>
-            ))}
-          </ul>
+          <>
+            <ul>
+              {shap.map((s) => (
+                <li key={s.feature}>
+                  <strong>{s.feature}</strong>: {s.value.toFixed(2)}
+                </li>
+              ))}
+            </ul>
+
+            <button
+              type="button"
+              className="explain-btn"
+              onClick={() => setShowExplain((prev) => !prev)}
+            >
+              {showExplain ? "Hide explanation" : "Explain SHAP"}
+            </button>
+
+            {showExplain && (
+              <div className="shap-explanation">
+                <p>
+                  <strong>What are SHAP values?</strong>
+                </p>
+                <p>
+                  SHAP (SHapley Additive exPlanations) values show how much each
+                  feature contributed to the model&apos;s prediction. A positive
+                  value means the feature pushed the prediction higher, while a
+                  negative value means it pushed the prediction lower.
+                </p>
+                <p>
+                  The larger the absolute value, the more influence that feature
+                  had on the final result for this sample.
+                </p>
+              </div>
+            )}
+          </>
         )}
       </section>
     </div>
   );
 }
+
 
 function ChatPage() {
   const [message, setMessage] = useState("");

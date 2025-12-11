@@ -137,3 +137,17 @@ body {
   background: #020617;
   color: #e5e7eb;
 }
+
+.explain-btn {
+  margin-top: 0.75rem;
+  padding: 0.4rem 0.9rem;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+}
+
+.shap-explanation {
+  margin-top: 0.75rem;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
