@@ -1,10 +1,11 @@
-# ml/analyze_image.py
+
 
 import json
 import pandas as pd
 from pathlib import Path
 import joblib
 import shap
+import subprocess
 
 # Paths
 MODEL_PATH = Path("/Users/reethika/Projects/Automated_Memory_Analyzer/backend/ml/image_model.joblib")
@@ -120,6 +121,9 @@ def analyze():
 
     else:
         print("\n(Ollama not installed — skipping LLM explanation.)")
+    
+    print("\n--- Starting forensic chat assistant (Ollama)… ---\n")
+    subprocess.run(["python", "llm/chat_memory_dump.py"])
 
 
 if __name__ == "__main__":
