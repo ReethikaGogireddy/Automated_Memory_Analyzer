@@ -1,12 +1,18 @@
 # backend/app.py
 from flask import Flask
-from routes import bp as api_bp
 from flask_cors import CORS
+from routes import bp as api_bp   # your blueprint
 
 app = Flask(__name__)
 
-# For dev: allow all origins
-CORS(app)  # or CORS(app, origins=["http://localhost:5173"])
+# EASIEST for dev: allow everything
+CORS(app)  
+
+# Or if you want to be stricter:
+# CORS(app, resources={r"/api/*": {"origins": [
+#     "http://localhost:5173",
+#     "http://localhost:5174",
+# ]}})
 
 app.register_blueprint(api_bp)
 

@@ -35,7 +35,11 @@ def load_background(feature_names, n=300):
     return X
 
 
-def analyze():
+def run_analysis():
+    """
+    Run prediction + SHAP and return a dict that the API can JSONify.
+    Assumes FEATURES_JSON_PATH was created for the latest uploaded dump.
+    """
     # Load features for this dump
     data = json.loads(FEATURE_JSON_PATH.read_text())
 
@@ -47,19 +51,16 @@ def analyze():
     X = pd.DataFrame([row], columns=feature_names)
 
     # Prediction
-    proba = model.predict_proba(X)[0, 1]
-    label_idx = model.predict(X)[0]
+    proba = float(model.predict_proba(X)[0, 1])
+    label_idx = int(model.predict(X)[0])
     label = "Malware" if label_idx == 1 else "Benign"
-
-    print(f"\nPrediction: {label} (P(malware)={proba:.4f})")
 
     # SHAP explanation
     background = load_background(feature_names)
     explainer = shap.Explainer(model, background)
     shap_values = explainer(X)
 
-    shap_vec = shap_values.values[0]
-    shap_vec = shap_vec.flatten()
+    shap_vec = shap_values.values[0].flatten()
 
     contributions = sorted(
         zip(feature_names, shap_vec),
@@ -67,64 +68,68 @@ def analyze():
         reverse=True
     )[:15]
 
-    print("\nTop SHAP features:")
-    for name, val in contributions:
-        direction = "→ Malware" if val > 0 else "→ Benign"
-        print(f"{name:35s} SHAP={val:+.4f} {direction}")
+    # Convert to JSON-friendly structures
+    shap_list = [
+        {"feature": name, "value": float(val)}
+        for name, val in contributions
+    ]
 
-    # Optional: Offline LLM explanation using Ollama
-    if OLLAMA_AVAILABLE:
-        try:
-            explanation_dict = {
-                "label": label,
-                "probability_malware": float(proba),
-                "top_features": contributions,
-            }
-
-            prompt = f"""
-            You are a DFIR (Digital Forensics & Incident Response) analyst.
-
-            You are given a machine-learning prediction and SHAP explanation for a Windows memory dump.
-
-            Your task:
-            1. Clearly explain why the dump was classified as {explanation_dict['label']}.
-            2. Break down the TOP contributing features in simple terms.
-            3. For each feature, explain:
-            - what the feature measures
-            - why its value is normal or suspicious
-            - how it influenced the model's decision
-            4. Provide an overall assessment in 2–3 sentences.
-            5. KEEP THE LANGUAGE SIMPLE. Avoid jargon unless absolutely needed.
-            6. DO NOT talk about "SHAP values" or "the model". Explain what the system behavior means in real-world terms.
-
-            Here is the data:
-
-            Prediction label: {explanation_dict['label']}
-            Malware probability: {explanation_dict['probability_malware']}
-
-            Top factors:
-            {json.dumps(explanation_dict['top_features'], indent=2)}
-
-            Now write a clear, beginner-friendly forensic explanation.
-            """
+    result = {
+        "label": label,
+        "probability_malware": proba,
+        "shap": shap_list,
+        "raw_contributions": contributions,  # for LLM prompt
+    }
+    return result
 
 
-            resp = ollama.chat(
-                model="llama3",
-                messages=[{"role": "user", "content": prompt}]
-            )
-            print("\nLLM Explanation:")
-            print(resp["message"]["content"])
+def build_ollama_explanation(result: dict) -> str:
+    """
+    Use Ollama to produce a natural-language explanation from the result dict.
+    Returns a string (or a fallback message).
+    """
+    if not OLLAMA_AVAILABLE:
+        return "(Ollama not installed — skipping LLM explanation.)"
 
-        except Exception as e:
-            print("\nOllama explanation unavailable:", e)
+    try:
+        explanation_dict = {
+            "label": result["label"],
+            "probability_malware": result["probability_malware"],
+            "top_features": result["raw_contributions"],
+        }
 
-    else:
-        print("\n(Ollama not installed — skipping LLM explanation.)")
-    
-    print("\n--- Starting forensic chat assistant (Ollama)… ---\n")
-    subprocess.run(["python", "llm/chat_memory_dump.py"])
+        prompt = f"""
+        You are a DFIR (Digital Forensics & Incident Response) analyst.
 
+        You are given a machine-learning prediction and SHAP explanation for a Windows memory dump.
 
-if __name__ == "__main__":
-    analyze()
+        Your task:
+        1. Clearly explain why the dump was classified as {explanation_dict['label']}.
+        2. Break down the TOP contributing features in simple terms.
+        3. For each feature, explain:
+           - what the feature measures
+           - why its value is normal or suspicious
+           - how it influenced the system's behavior
+        4. Provide an overall assessment in 2–3 sentences.
+        5. KEEP THE LANGUAGE SIMPLE. Avoid jargon unless absolutely needed.
+        6. DO NOT talk about "SHAP values" or "the model". Explain what the system behavior means in real-world terms.
+
+        Here is the data:
+
+        Prediction label: {explanation_dict['label']}
+        Malware probability: {explanation_dict['probability_malware']}
+
+        Top factors:
+        {json.dumps(explanation_dict['top_features'], indent=2)}
+
+        Now write a clear, beginner-friendly forensic explanation.
+        """
+
+        resp = ollama.chat(
+            model="llama3",
+            messages=[{"role": "user", "content": prompt}]
+        )
+        return resp["message"]["content"]
+
+    except Exception as e:
+        return f"(Ollama explanation unavailable: {e})"

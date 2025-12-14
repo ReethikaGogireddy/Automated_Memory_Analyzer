@@ -1,5 +1,3 @@
-# core/feature_image.py
-
 from collections import Counter
 
 
@@ -11,19 +9,6 @@ def image_features(all_plugins: dict) -> dict:
     """
     Build a single feature vector (one row) for a memory image
     from all parsed plugin outputs in `all_plugins`.
-
-    `all_plugins` is expected to look like:
-      {
-        "windows.pslist":     [...],
-        "windows.dlllist":    [...],
-        "windows.handles":    [...],
-        "windows.malfind":    [...],
-        "windows.psxview":    [...],
-        "windows.ldrmodules": [...],
-        "windows.svcscan":    [...],
-        "windows.modules":    [...],
-        "windows.callbacks":  [...],
-      }
     """
 
     # Gracefully handle missing plugins
@@ -54,9 +39,11 @@ def image_features(all_plugins: dict) -> dict:
         sum(p.get("threads", 0) or 0 for p in ps), nproc
     )
 
-    feats["pslist.avg_handlers"] = _safe_div(
-        sum(p.get("handles", 0) or 0 for p in ps), nproc
-    )
+    # Use the real handle stats from windows.handles instead of pslist
+    # (this will be filled in after we compute handles.* below)
+    # We'll set this after handles.avg_handles_per_proc is computed.
+    # For now, init to 0 so the key always exists.
+    feats["pslist.avg_handlers"] = 0.0
 
     # If you later add is_64bit / wow64 info to parse_pslist,
     # update this to count 64-bit procs. For now, default to 0.
@@ -81,6 +68,9 @@ def image_features(all_plugins: dict) -> dict:
     handle_pids = {h.get("pid") for h in hnd if h.get("pid") is not None}
     n_handle_procs = len(handle_pids) or nproc
     feats["handles.avg_handles_per_proc"] = _safe_div(nhandles, n_handle_procs)
+
+    # Now that we have the true handle average, map pslist.avg_handlers to it
+    feats["pslist.avg_handlers"] = feats["handles.avg_handles_per_proc"]
 
     # Count handle types (File, Port, Event, etc.)
     type_counts = Counter((h.get("type") or "").lower() for h in hnd)
@@ -125,7 +115,7 @@ def image_features(all_plugins: dict) -> dict:
         1
         for m in mf
         if "EXECUTE" in (m.get("protection") or "").upper()
-        and "WRITE" in (m.get("protection") or "").upper()
+        and "WRITE"   in (m.get("protection") or "").upper()
     )
 
     # Count unique (pid, start) pairs as unique injections
@@ -178,7 +168,6 @@ def image_features(all_plugins: dict) -> dict:
     feats["svcscan.shared_process_services"] = sum(
         1 for s in svc if s.get("is_shared_process")
     )
-    # You can refine this if you define "interactive" explicitly
     feats["svcscan.interactive_process_services"] = 0
 
     feats["svcscan.nactive"] = sum(

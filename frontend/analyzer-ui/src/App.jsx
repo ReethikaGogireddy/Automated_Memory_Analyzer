@@ -103,7 +103,10 @@ function AnalysisPage() {
   const [classification, setClassification] = useState([]);
   const [shap, setShap] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const [showExplain, setShowExplain] = useState(false);
+  const [explanation, setExplanation] = useState("");
+  const [explainLoading, setExplainLoading] = useState(false);
 
   const loadData = async () => {
     try {
@@ -125,6 +128,27 @@ function AnalysisPage() {
     loadData();
   }, []);
 
+  const handleExplainClick = async () => {
+    if (!explanation) {
+      try {
+        setExplainLoading(true);
+        const res = await axios.get(`${API_BASE}/api/shap-explanation`);
+        setExplanation(res.data.explanation || "No explanation available.");
+      } catch (err) {
+        console.error("Explain error:", err);
+        const backendMsg =
+          err.response?.data?.explanation ||
+          err.response?.data?.message ||
+          err.message;
+        setExplanation(backendMsg || "Failed to load explanation.");
+      } finally {
+        setExplainLoading(false);
+      }
+    }
+
+    setShowExplain((prev) => !prev);
+  };
+
   return (
     <div className="grid">
       <section>
@@ -134,7 +158,7 @@ function AnalysisPage() {
           <ul>
             {classification.map((c) => (
               <li key={c.label}>
-                <strong>{c.label}</strong> — {(c.score * 100).toFixed(1)}%
+                <strong>Suspicious Score</strong> — {(c.score * 100).toFixed(1)}%
               </li>
             ))}
           </ul>
@@ -143,52 +167,51 @@ function AnalysisPage() {
 
       <section>
         <h2>SHAP values</h2>
+        {loading && <p>Loading…</p>}
         {!loading && (
-          <>
-            <ul>
-              {shap.map((s) => (
-                <li key={s.feature}>
-                  <strong>{s.feature}</strong>: {s.value.toFixed(2)}
-                </li>
-              ))}
-            </ul>
-
-            <button
-              type="button"
-              className="explain-btn"
-              onClick={() => setShowExplain((prev) => !prev)}
-            >
-              {showExplain ? "Hide explanation" : "Explain SHAP"}
-            </button>
-
-            {showExplain && (
-              <div className="shap-explanation">
-                <p>
-                  <strong>What are SHAP values?</strong>
-                </p>
-                <p>
-                  SHAP (SHapley Additive exPlanations) values show how much each
-                  feature contributed to the model&apos;s prediction. A positive
-                  value means the feature pushed the prediction higher, while a
-                  negative value means it pushed the prediction lower.
-                </p>
-                <p>
-                  The larger the absolute value, the more influence that feature
-                  had on the final result for this sample.
-                </p>
-              </div>
-            )}
-          </>
+          <ul className="shap-list">
+            {shap.map((s) => (
+              <li key={s.feature}>
+                <strong>{s.feature}</strong>: {Number(s.value).toFixed(4)}
+              </li>
+            ))}
+          </ul>
         )}
       </section>
+
+      {/* explanation row spanning both columns */}
+      <div className="explain-row">
+        <button
+          type="button"
+          className="explain-btn"
+          onClick={handleExplainClick}
+        >
+          {showExplain ? "Hide explanation" : "Explain (Ollama)"}
+        </button>
+
+        {showExplain && (
+          <div className="shap-explanation">
+            {explainLoading ? (
+              <p>Loading explanation…</p>
+            ) : (
+              <pre className="explanation-text">
+                {explanation || "(no explanation text)"}
+              </pre>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
 
 
+
+
 function ChatPage() {
   const [message, setMessage] = useState("");
   const [conversation, setConversation] = useState([]);
+  const [isThinking, setIsThinking] = useState(false);
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -199,17 +222,27 @@ function ChatPage() {
     setMessage("");
 
     try {
+      setIsThinking(true); // 🔥 start thinking effect
+
       const res = await axios.post(`${API_BASE}/api/chat`, { message });
       const botMsg = { from: "bot", text: res.data.reply };
       setConversation((prev) => [...prev, botMsg]);
     } catch (err) {
       console.error(err);
+      const botMsg = {
+        from: "bot",
+        text: "Sorry, I couldn't respond. Please try again.",
+      };
+      setConversation((prev) => [...prev, botMsg]);
+    } finally {
+      setIsThinking(false); // 🔥 stop thinking effect
     }
   };
 
   return (
     <div>
       <h2>Chat with your dump</h2>
+
       <div className="chat-box">
         {conversation.map((m, idx) => (
           <div
@@ -219,6 +252,17 @@ function ChatPage() {
             <span>{m.text}</span>
           </div>
         ))}
+
+        {/* 🔥 Thinking bubble */}
+        {isThinking && (
+          <div className="chat-msg bot thinking">
+            <span className="thinking-dots">
+              <span>.</span>
+              <span>.</span>
+              <span>.</span>
+            </span>
+          </div>
+        )}
       </div>
 
       <form onSubmit={sendMessage} className="chat-form">
@@ -228,7 +272,9 @@ function ChatPage() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
         />
-        <button type="submit">Send</button>
+        <button type="submit" disabled={isThinking}>
+          {isThinking ? "Thinking…" : "Send"}
+        </button>
       </form>
     </div>
   );

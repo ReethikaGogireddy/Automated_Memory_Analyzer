@@ -57,13 +57,15 @@ def parse_pslist(rows):
             "image_filename": r.get("ImageFileName"),
             "offset_v": r.get("Offset(V)"),
             "threads": safe_int(r.get("Threads"), 0),
-            "handles": safe_int(r.get("Handles"), 0),
+            # pslist's "Handles" column is "-" / not real, so don't use it
+            # "handles": safe_int(r.get("Handles"), 0),
             "session_id": safe_int(r.get("SessionId"), 0),
             "wow64": r.get("Wow64"),
             "create_time": r.get("CreateTime"),
             "exit_time": r.get("ExitTime"),
         })
     return parsed
+
 
 
 
@@ -164,54 +166,124 @@ def parse_ldrmodules(rows):
     return parsed
 
 
-def parse_malfind(rows):
+def parse_malfind(rows, debug=False):
     """
-    Clean up malfind output:
-    - keep only real VAD rows
-    - drop hexdump/disasm garbage rows
+    Robustly parse Volatility malfind/vadinfo-style rows.
+
+    - Handles different key names and spacing/casing (e.g. 'Start VPN', 'StartVPN', 'start')
+    - Skips obvious garbage rows (no PID)
+    - Does NOT over-filter on address / protection format
+    - Adds exec/RWX flags if Protection is present
     """
+
     parsed = []
 
-    for r in rows:
-        pid_raw = r.get("PID")
-        start = str(r.get("Start", ""))
-        end = str(r.get("End", ""))
-        prot = str(r.get("Protection", ""))
-        tag = str(r.get("Tag", ""))
+    # Optional: basic stats on why rows get dropped
+    stats = {"no_pid": 0, "no_addr": 0, "ok": 0}
 
-        # 1) PID must be an integer
+    for i, r in enumerate(rows):
+        # Normalize keys: lowercased, no spaces, no underscores
+        norm = {
+            (k or "").strip().lower().replace(" ", "").replace("_", ""): v
+            for k, v in r.items()
+        }
+
+        # --- 1) PID detection ---
+        pid_val = norm.get("pid")
         try:
-            pid = int(pid_raw)
+            pid = int(str(pid_val).strip())
         except (TypeError, ValueError):
+            stats["no_pid"] += 1
+            if debug:
+                print(f"[drop no_pid] row {i}: keys={list(r.keys())} value={pid_val!r}")
+            continue  # this is probably a hexdump/disasm-only line
+
+        # --- 2) Address detection (very tolerant) ---
+        # Try multiple possible names
+        start_val = (
+            norm.get("startvpn")
+            or norm.get("start")
+            or norm.get("startaddress")
+        )
+        end_val = (
+            norm.get("endvpn")
+            or norm.get("end")
+            or norm.get("endaddress")
+        )
+
+        if start_val is None or end_val is None:
+            stats["no_addr"] += 1
+            if debug:
+                print(f"[drop no_addr] row {i}: keys={list(r.keys())}")
             continue
 
-        # 2) Start/End must be addresses
-        if not (start.startswith("0x") and end.startswith("0x")):
+        # Turn them into hex-ish strings if possible
+        def to_hexish(v):
+            s = str(v).strip()
+            if s.lower() == "none" or not s:
+                return None
+            if s.startswith("0x"):
+                return s
+            # try to interpret as int
+            try:
+                return hex(int(s, 0))
+            except Exception:
+                return s  # keep raw; we won't drop just because of format
+
+        start = to_hexish(start_val)
+        end = to_hexish(end_val)
+
+        if start is None or end is None:
+            stats["no_addr"] += 1
+            if debug:
+                print(f"[drop no_addr (none after conv)] row {i}: start={start_val!r}, end={end_val!r}")
             continue
 
-        # 3) Protection should look like PAGE_...
-        if not prot.startswith("PAGE_"):
-            continue
+        # --- 3) Protection (optional, do NOT drop if missing) ---
+        prot_raw = norm.get("protection", r.get("Protection", ""))
+        prot = str(prot_raw).strip() if prot_raw is not None else ""
 
-        # Now it's a real malfind hit
-        commit = r.get("CommitCharge", "0")
+        prot_u = prot.upper().replace(" ", "")
+        is_exec = "EXECUTE" in prot_u
+        is_rwx = "EXECUTEREADWRITE" in prot_u
+
+        # --- 4) Tag (optional) ---
+        tag = r.get("Tag", "")
+        if tag is None:
+            tag = ""
+        tag = str(tag).strip()
+
+        # --- 5) CommitCharge normalization ---
+        commit_raw = norm.get("commitcharge", r.get("CommitCharge", 0))
         try:
-            commit = int(commit)
-        except ValueError:
+            commit = int(str(commit_raw).strip())
+        except (TypeError, ValueError):
             commit = 0
 
-        parsed.append({
+        # --- 6) Build parsed record ---
+        rec = {
             "pid": pid,
-            "process": r.get("Process"),
+            "process": r.get("Process", ""),
             "start": start,
             "end": end,
             "tag": tag,
             "protection": prot,
             "commit_charge": commit,
-            # you can add PrivateMemory / File / Notes if you want
-        })
+            "is_exec": is_exec,
+            "is_rwx": is_rwx,
+        }
+
+        parsed.append(rec)
+        stats["ok"] += 1
+
+        if debug:
+            print(f"[OK] row {i}: {rec}")
+
+    if debug:
+        print("parse_malfind stats:", stats)
 
     return parsed
+
 
 
 

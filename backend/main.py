@@ -11,7 +11,14 @@ def main():
     # 1) Load settings
     settings = yaml.safe_load(open("config/settings.yaml"))
     vol_path = settings["volatility_path"]
-    dump_path = Path("data/dumps/memorydump.mem")   # your memory dump
+    dump_dir = Path("data/dumps/")
+    dump_files = list(dump_dir.glob("*.mem"))
+
+    if not dump_files:
+        raise FileNotFoundError("No .mem files found in data/dumps/")
+
+    dump_path = max(dump_files, key=lambda f: f.stat().st_mtime)
+    print("Using newest file:", dump_path)  # your memory dump
     output_dir = Path(settings["output_dir"])
     output_dir.mkdir(parents=True, exist_ok=True)
 

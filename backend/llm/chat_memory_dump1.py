@@ -1,3 +1,4 @@
+
 import json
 from pathlib import Path
 
@@ -6,32 +7,23 @@ import pandas as pd  # make sure: pip install pandas
 
 MODEL_NAME = "llama3"  # or the model you pulled
 
-# Use the same absolute paths that *already work* in your CLI
 FEATURE_IMAGE = Path("/Users/reethika/Projects/Automated_Memory_Analyzer/backend/data/raw_outputs/features_image.json")
 FEATURE_PROCESS_CSV = Path("/Users/reethika/Projects/Automated_Memory_Analyzer/backend/data/raw_outputs/features_process.csv")
+EXPLANATION_FILE = Path("data/output/explanation_image.json")  # optional
 
 
 def load_context():
     """Load image-level and process-level features from disk."""
-    print("[CHAT] Looking for image features at:", FEATURE_IMAGE)
-    print("[CHAT] Looking for process features at:", FEATURE_PROCESS_CSV)
-
     image_feats = {}
     if FEATURE_IMAGE.exists():
         text = FEATURE_IMAGE.read_text().strip()
         if text:
             image_feats = json.loads(text)
-            print(f"[CHAT] Loaded {len(image_feats)} image features")
-    else:
-        print("[CHAT] features_image.json NOT found")
 
     process_feats = []
     if FEATURE_PROCESS_CSV.exists():
         df = pd.read_csv(FEATURE_PROCESS_CSV)
         process_feats = df.to_dict(orient="records")
-        print(f"[CHAT] Loaded {len(process_feats)} process rows")
-    else:
-        print("[CHAT] features_process.csv NOT found")
 
     return image_feats, process_feats
 
@@ -70,41 +62,6 @@ IMPORTANT INSTRUCTIONS:
     }
 
 
-# 🔥 new: function used by the API
-def answer_question(user_msg: str) -> str:
-    """
-    Single-turn version of your CLI chat() that the HTTP API can call.
-    """
-    image, processes = load_context()
-
-    print("[API CHAT] image features:", len(image))
-    print("[API CHAT] process features:", len(processes))
-
-    if not image and not processes:
-        return (
-            "I don't have any features for this dump yet. "
-            "Make sure features_image.json and features_process.csv were generated."
-        )
-
-    system_msg = build_system_message(image, processes)
-
-    try:
-        response = ollama.chat(
-            model=MODEL_NAME,
-            messages=[
-                {"role": "system", "content": system_msg["content"]},
-                {"role": "user", "content": user_msg},
-            ],
-        )
-        answer = response["message"]["content"].strip()
-        print("[API CHAT] Ollama answer (preview):", answer[:120], "...")
-        return answer
-    except Exception as e:
-        print("[API CHAT] Error:", e)
-        return f"(Chat error while talking to Ollama: {e})"
-
-
-# keep your CLI chat for terminal usage
 def chat():
     image, processes = load_context()
 
