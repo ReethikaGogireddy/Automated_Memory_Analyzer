@@ -1,101 +1,178 @@
+# 🧠 MemSight - Automated Memory Artifact Analyzer 
 
-# Automated Memory Analyzer
+An end-to-end forensic analysis system that automates **RAM/memory dump investigation** using **Volatility**, **Machine Learning**, and **LLM-assisted reasoning**.
+The platform helps forensic analysts quickly identify **malicious memory artifacts**, understand **why** a dump is flagged, and interactively investigate suspicious processes.
 
-This project automates **Windows memory forensics** using Volatility 3, extracts structured features, classifies memory dumps as **Malware or Benign** using machine learning, and adds an offline **LLM assistant (Ollama)** for explaining results and identifying suspicious processes.
-
+---
 
 ## 🚀 Features
 
-* Runs key **Volatility 3** plugins automatically
-* Cleans and normalizes plugin outputs into JSON
-* Extracts **image-level** and **process-level** forensic features
-* Uses a trained ML model to classify dumps as *Benign/Malware*
-* Provides **SHAP explanations** for transparency
-* Uses **Ollama (offline LLM)** for:
+* 🔍 **Automated Memory Forensics**
 
-  * Natural-language explanations
-  * Suspicious process identification
-  * Simple forensic Q&A
+  * Executes Volatility plugins on RAM dumps
+  * Extracts process, DLL, handle, and memory artifacts
+  * Normalizes outputs into structured JSON
 
+* 🤖 **Machine Learning–Based Detection**
 
-## 📌 How It Works
+  * Random Forest classifier trained on memory artifact features
+  * Detects anomalous / malicious memory dumps
+  * High accuracy on benchmark datasets
 
-1. **Place memory dump**
-   Put `.mem` or `.raw` file in:
+* 📊 **Explainable AI (XAI)**
 
-   ```
-   data/dumps/
-   ```
+  * SHAP-based explanations
+  * Visualizes which memory features influenced predictions
 
-2. **Run analysis pipeline**
+* 🧠 **LLM-Assisted Analysis**
 
-   ```bash
-   python main.py
-   ```
+  * Uses **Ollama** (local LLM)
+  * Performs structured forensic reasoning
+  * Enables interactive questioning of suspicious processes
 
-   Produces:
+* 🌐 **Web Application**
 
-   * Cleaned JSON output
-   * `features_image.json`
-   * `features_process.json`
+  * Flask backend REST API
+  * React frontend for uploads, visualization, and chat-based analysis
 
-3. **Train ML model** (one time)
+---
 
-   ```bash
-   python ml/train_image_level.py
-   ```
+## 🛠 Tech Stack
 
-4. **Predict malware vs benign**
+### Backend
 
-   ```bash
-   python ml/predict_image.py
-   ```
+* **Flask** (Python REST API)
+* **Volatility** (Memory forensics framework)
+* **scikit-learn** (Machine Learning)
+* **SHAP** (Explainable AI)
+* **Ollama** (Local LLM inference)
 
-5. **Explain the prediction (SHAP)**
+### Frontend
 
-   ```bash
-   python ml/explain_shap.py
-   ```
+* **React**
+* JavaScript / HTML / CSS
 
-6. **LLM explanations (offline Ollama)**
+### ML & Data
 
-   ```bash
-   python ml/analyze_image.py
-   ```
+* Feature extraction from memory artifacts
+* Random Forest classifier
+* CIC-MalMem-2022 dataset (training & evaluation)
 
-7. **LLM suspicious-process triage**
+---
 
-   ```bash
-   python llm/triage_processes_ollama.py
-   ```
+## ⚙️ Installation & Setup
 
+### 1️⃣ Backend Setup (Flask + ML + Volatility)
 
-## 📁 Project Structure
+```bash
+git clone https://github.com/your-username/automated-memory-analyzer.git
+cd automated-memory-analyzer/backend
 
-```
-core/               → volatility + parsers + feature extraction
-ml/                 → training, prediction, SHAP, LLM explainability
-llm/                → Ollama integration and forensic chat
-data/dumps/         → memory dumps
-data/output/        → all generated outputs
-config/settings.yaml
-main.py
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 ```
 
+Set environment variables:
 
-## ⚙ Requirements
+```bash
+export FLASK_APP=app.py
+export FLASK_ENV=development
+export OLLAMA_HOST=http://localhost:11434
+```
 
-* Python 3.9+
-* Volatility 3
-* Local Ollama installation
-* Python packages:
+Run backend:
 
-  ```
-  pip install pandas scikit-learn shap ollama joblib matplotlib
-  ```
+```bash
+flask run
+```
 
+---
 
-## 📝 License
+### 2️⃣ Frontend Setup (React)
 
-MIT License.
+```bash
+cd frontend
+npm install
+npm start
+```
 
+Access UI at:
+
+```
+http://localhost:3000
+```
+
+---
+
+### 3️⃣ Ollama Setup (LLM)
+
+1. Install Ollama from official website
+2. Pull a model (example):
+
+```bash
+ollama pull llama3
+```
+
+3. Ensure Ollama is running:
+
+```bash
+ollama serve
+```
+
+---
+
+## 🔄 Workflow
+
+1. Upload a memory dump via the web interface
+2. Volatility extracts forensic artifacts
+3. ML model classifies dump as benign or malicious
+4. SHAP explains the prediction
+5. Ollama performs LLM-driven forensic reasoning
+6. Analyst interacts with results through the UI
+
+---
+
+## 📊 Machine Learning Details
+
+* **Model:** Random Forest Classifier
+* **Features:**
+
+  * Process metadata
+  * DLLs loaded
+  * Handles and memory structures
+* **Explainability:** SHAP values per dump and per process
+* **Performance:** ~99% accuracy on benchmark dataset
+
+---
+
+## ⚠️ Limitations
+
+* Volatility output varies across OS profiles
+* Model performance depends on dataset distribution
+* Large memory dumps may require significant processing time
+* LLM outputs are assistive, not authoritative
+
+---
+
+## 🔮 Future Enhancements
+
+* Support for additional Volatility plugins
+* Streaming and parallel memory analysis
+* Ensemble ML models
+* Advanced visualization dashboards
+* Cloud-based deployment
+
+## 📄 License
+
+This project is licensed under the **MIT License**.
+See the `LICENSE` file for details.
+
+---
+
+## ⭐ Acknowledgements
+
+* Volatility Foundation
+* CIC-MalMem-2022 Dataset
+* SHAP (Lundberg & Lee)
+* Ollama LLM framework
