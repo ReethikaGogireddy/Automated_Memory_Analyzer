@@ -3,8 +3,6 @@
 An end-to-end forensic analysis system that automates **RAM/memory dump investigation** using **Volatility**, **Machine Learning**, and **LLM-assisted reasoning**.
 The platform helps forensic analysts quickly identify **malicious memory artifacts**, understand **why** a dump is flagged, and interactively investigate suspicious processes.
 
----
-
 ## 🚀 Features
 
 * 🔍 **Automated Memory Forensics**
@@ -35,8 +33,6 @@ The platform helps forensic analysts quickly identify **malicious memory artifac
   * Flask backend REST API
   * React frontend for uploads, visualization, and chat-based analysis
 
----
-
 ## 🛠 Tech Stack
 
 ### Backend
@@ -57,8 +53,6 @@ The platform helps forensic analysts quickly identify **malicious memory artifac
 * Feature extraction from memory artifacts
 * Random Forest classifier
 * CIC-MalMem-2022 dataset (training & evaluation)
-
----
 
 ## ⚙️ Installation & Setup
 
@@ -87,8 +81,6 @@ Run backend:
 flask run
 ```
 
----
-
 ### 2️⃣ Frontend Setup (React)
 
 ```bash
@@ -102,8 +94,6 @@ Access UI at:
 ```
 http://localhost:3000
 ```
-
----
 
 ### 3️⃣ Ollama Setup (LLM)
 
@@ -120,8 +110,6 @@ ollama pull llama3
 ollama serve
 ```
 
----
-
 ## 🔄 Workflow
 
 1. Upload a memory dump via the web interface
@@ -130,8 +118,6 @@ ollama serve
 4. SHAP explains the prediction
 5. Ollama performs LLM-driven forensic reasoning
 6. Analyst interacts with results through the UI
-
----
 
 ## 📊 Machine Learning Details
 
@@ -144,7 +130,6 @@ ollama serve
 * **Explainability:** SHAP values per dump and per process
 * **Performance:** ~99% accuracy on benchmark dataset
 
----
 
 ## ⚠️ Limitations
 
@@ -153,7 +138,6 @@ ollama serve
 * Large memory dumps may require significant processing time
 * LLM outputs are assistive, not authoritative
 
----
 
 ## 🔮 Future Enhancements
 
@@ -168,7 +152,6 @@ ollama serve
 This project is licensed under the **MIT License**.
 See the `LICENSE` file for details.
 
----
 
 ## ⭐ Acknowledgements
 
