@@ -128,7 +128,7 @@ ollama serve
   * DLLs loaded
   * Handles and memory structures
 * **Explainability:** SHAP values per dump and per process
-* **Performance:** ~99% accuracy on benchmark dataset
+* **Performance:** ~85% accuracy on benchmark dataset
 
 
 ## ⚠️ Limitations
