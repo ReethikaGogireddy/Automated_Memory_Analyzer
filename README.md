@@ -117,7 +117,7 @@ ollama serve
 3. ML model classifies dump as benign or malicious
 4. SHAP explains the prediction
 5. Ollama performs LLM-driven forensic reasoning
-6. Analyst interacts with results through the UI
+6. Analyst interacts with results through the chatbot that uses SHAP and Ollama
 
 ## 📊 Machine Learning Details
 
